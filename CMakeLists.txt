@@ -1,4 +1,14 @@
 cmake_minimum_required(VERSION 3.26)
+include(FetchContent)
+
+FetchContent_Declare(
+        gcem
+        GIT_REPOSITORY https://github.com/kthohr/gcem.git
+        GIT_TAG        8422f5307b0498d09cf626f38acb03fe9f1efd94  # release-v1.17.0
+)
+
+FetchContent_MakeAvailable(gcem)
+
 project(FFTMyLib)
 
 set(HOMEBREW_PREFIX "/opt/homebrew"
@@ -24,5 +34,5 @@ find_package(GTest REQUIRED)
 
 add_executable(FFTMyLib main.cpp)
 
-target_include_directories(FFTMyLib PUBLIC include)
+target_include_directories(FFTMyLib PUBLIC include ${CMAKE_BINARY_DIR}/_deps/gcem-src/include)
 target_link_libraries(FFTMyLib GTest::gtest)
