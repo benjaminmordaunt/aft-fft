@@ -5,33 +5,47 @@
  */
 
 #include <iostream>
+#include <type_traits>
 #include <gcem.hpp>
 #include <gtest/gtest.h>
 
-static constexpr bool ISP2(const unsigned int x) {
-    return (x & (x - 1)) == 0;
-}
-
-template <auto V>
-static constexpr auto force_consteval = V;
-
-template<std::size_t N>
-struct num { static const constexpr int value = N; };
-
-template <class F, std::size_t... Is>
-void for_(F func, std::index_sequence<Is...>)
-{
-    using expander = int[];
-    (void)expander{0, ((void)func(num<Is>{}), 0)...};
-}
-
-template <std::size_t N, typename F>
-void for_(F func)
-{
-    for_(func, std::make_index_sequence<N>());
-}
-
 namespace aft {
+    static constexpr bool IsPowerOf2(const unsigned int x) {
+        return (x & (x - 1)) == 0;
+    }
+
+    template <typename T>
+    using byte_representation = std::array<std::byte, sizeof(T)>;
+
+    template <typename T>
+    constexpr byte_representation<T> to_bytes(const T& value) {
+        return std::bit_cast<byte_representation<T>>(value);
+    }
+
+    template <typename T>
+    constexpr T from_bytes(const byte_representation<T>& bytes) {
+        return std::bit_cast<T>(bytes);
+    }
+
+    template <typename T, byte_representation<T> Bytes>
+    static constexpr auto force_consteval = from_bytes<T>(Bytes);
+
+    template<std::size_t N>
+    struct num { static const constexpr int value = N; };
+
+    template <class F, std::size_t... Is>
+    void for_(F func, std::index_sequence<Is...>)
+    {
+        using expander = int[];
+        (void)expander{0, ((void)func(num<Is>{}), 0)...};
+    }
+
+    template <std::size_t N, typename F>
+    void for_(F func)
+    {
+        for_(func, std::make_index_sequence<N>());
+    }
+
     template<typename T, typename std::enable_if<std::is_floating_point<T>::value, int>::type = 0>
     struct aft_complex {
         T real;
@@ -40,7 +54,7 @@ namespace aft {
 
     template<unsigned int M, typename T>
     struct AftFFT {
-        static_assert(ISP2(M), "Only power-of-2 DFT vector lengths supported.");
+        static_assert(IsPowerOf2(M), "Only power-of-2 DFT vector lengths supported.");
         explicit AftFFT(aft_complex<T> const (&in)[M]) : m_in(in), m_out{0} {}
         aft_complex<T> const (&m_in)[M];
         aft_complex<T> m_out[M];
@@ -59,8 +73,8 @@ namespace aft {
             dft<N/2>(i+stride, stride*2);
 
             for_<N/2>([&] (auto j) {
-                romega = gcem::cos(-j.value * M_2_PI / N);
-                iomega = gcem::sin(-j.value * M_2_PI / N);
+                romega = force_consteval<T, to_bytes(gcem::cos<T>(-j.value * M_2_PI / N))>;
+                iomega = force_consteval<T, to_bytes(gcem::sin<T>(-j.value * M_2_PI / N))>;
                 er = m_out[i + 2*j.value * stride].real;
                 ei = m_out[i + 2*j.value * stride].imag;
                 or_ = m_out[i + (2*j.value + 1) * stride].real;
