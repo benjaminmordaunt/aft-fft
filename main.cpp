@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <gcem.hpp>
+#include <gtest/gtest.h>
 #include <fftw3.h>
 
 static constexpr bool ISP2(const unsigned int x) {
@@ -61,18 +62,26 @@ namespace aft {
     };
 }
 
-int main() {
+TEST(dft1d, l4) {
     using namespace aft;
+    aft_complex<float> x[4] = {{5.f, 0.f},
+                          {5.f, 0.f},
+                          {5.f, 0.f},
+                          {5.f, 0.f}};
 
-    const aft_complex<float> x[] = {{5.f, 0.f},
-                                {5.f, 0.f},
-                                {5.f, 0.f},
-                                {5.f, 0.f}};
-    auto plan = AftFFT(x);
-    plan.run();
+    aft_complex<float> exp[4] = {{20.f, 0.f},
+                                 {0.f, 0.f},
+                                 {0.f, 0.f},
+                                 {0.f, 0.f}};
 
-    for (auto &element : plan.m_out) {
-        std::cout << element.real << std::endl;
+    auto planner = AftFFT(x); planner.run();
+    for (int i = 0; i < 4; i++) {
+        EXPECT_EQ(planner.m_out[i].real, exp[i].real);
+        EXPECT_EQ(planner.m_out[i].imag, exp[i].imag);
     }
-    return 0;
+}
+
+int main(int argc, char *argv[]) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

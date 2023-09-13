@@ -19,9 +19,10 @@ set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH FALSE)
 
 set(CMAKE_CXX_STANDARD 17)
 
+enable_testing()
+find_package(GTest REQUIRED)
+
 add_executable(FFTMyLib main.cpp)
 
 target_include_directories(FFTMyLib PUBLIC include)
-
-find_library(FFTW3_LIB fftw3)
-target_link_libraries(FFTMyLib ${FFTW3_LIB})
+target_link_libraries(FFTMyLib GTest::gtest)
