@@ -13,6 +13,25 @@ static constexpr bool ISP2(const unsigned int x) {
     return (x & (x - 1)) == 0;
 }
 
+template <auto V>
+static constexpr auto force_consteval = V;
+
+template<std::size_t N>
+struct num { static const constexpr auto value = N; };
+
+template <class F, std::size_t... Is>
+void for_(F func, std::index_sequence<Is...>)
+{
+    using expander = int[];
+    (void)expander{0, ((void)func(num<Is>{}), 0)...};
+}
+
+template <std::size_t N, typename F>
+void for_(F func)
+{
+    for_(func, std::make_index_sequence<N>());
+}
+
 namespace aft {
     template<typename T, typename std::enable_if<std::is_floating_point<T>::value, int>::type = 0>
     struct aft_complex {
@@ -40,20 +59,20 @@ namespace aft {
             dft<N/2>(i, stride*2);
             dft<N/2>(i+stride, stride*2);
 
-            for (int j = 0; j < N/2; j++) {
-                romega = gcem::cos(-j * M_2_PI / N);
-                iomega = gcem::sin(-j * M_2_PI / N);
-                er = m_out[i + 2*j * stride].real;
-                ei = m_out[i + 2*j * stride].imag;
-                or_ = m_out[i + (2*j + 1) * stride].real;
-                oi = m_out[i + (2*j + 1) * stride].imag;
+            for_<N/2>([&] (auto j) {
+                romega = force_consteval<gcem::cos(-j.value * M_2_PI / N)>;
+                iomega = force_consteval<gcem::sin(-j.value * M_2_PI / N)>;
+                er = m_out[i + 2*j.value * stride].real;
+                ei = m_out[i + 2*j.value * stride].imag;
+                or_ = m_out[i + (2*j.value + 1) * stride].real;
+                oi = m_out[i + (2*j.value + 1) * stride].imag;
                 ur = or_ * romega - oi * iomega;
                 ui = or_ * iomega + oi * romega;
-                m_out[i + 2*j * stride].real = er + ur;
-                m_out[i + 2*j * stride].imag = ei + ui;
-                m_out[i + (2*j + 1) * stride].real = er - ur;
-                m_out[i + (2*j + 1) * stride].imag = ei - ui;
-            }
+                m_out[i + 2*j.value * stride].real = er + ur;
+                m_out[i + 2*j.value * stride].imag = ei + ui;
+                m_out[i + (2*j.value + 1) * stride].real = er - ur;
+                m_out[i + (2*j.value + 1) * stride].imag = ei - ui;
+            });
         }
 
         void run() {
