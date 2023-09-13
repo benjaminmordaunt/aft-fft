@@ -7,7 +7,6 @@
 #include <iostream>
 #include <gcem.hpp>
 #include <gtest/gtest.h>
-#include <fftw3.h>
 
 static constexpr bool ISP2(const unsigned int x) {
     return (x & (x - 1)) == 0;
@@ -17,7 +16,7 @@ template <auto V>
 static constexpr auto force_consteval = V;
 
 template<std::size_t N>
-struct num { static const constexpr auto value = N; };
+struct num { static const constexpr int value = N; };
 
 template <class F, std::size_t... Is>
 void for_(F func, std::index_sequence<Is...>)
@@ -60,8 +59,8 @@ namespace aft {
             dft<N/2>(i+stride, stride*2);
 
             for_<N/2>([&] (auto j) {
-                romega = force_consteval<gcem::cos(-j.value * M_2_PI / N)>;
-                iomega = force_consteval<gcem::sin(-j.value * M_2_PI / N)>;
+                romega = gcem::cos(-j.value * M_2_PI / N);
+                iomega = gcem::sin(-j.value * M_2_PI / N);
                 er = m_out[i + 2*j.value * stride].real;
                 ei = m_out[i + 2*j.value * stride].imag;
                 or_ = m_out[i + (2*j.value + 1) * stride].real;
