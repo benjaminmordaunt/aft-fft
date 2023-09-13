@@ -65,9 +65,9 @@ namespace aft {
 TEST(dft1d, l4) {
     using namespace aft;
     aft_complex<float> x[4] = {{5.f, 0.f},
-                          {5.f, 0.f},
-                          {5.f, 0.f},
-                          {5.f, 0.f}};
+                               {5.f, 0.f},
+                               {5.f, 0.f},
+                               {5.f, 0.f}};
 
     aft_complex<float> exp[4] = {{20.f, 0.f},
                                  {0.f, 0.f},
