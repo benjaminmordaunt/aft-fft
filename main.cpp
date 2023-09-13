@@ -4,6 +4,7 @@
  * The Aft FFT library project.
  */
 
+#include <cmath>
 #include <iostream>
 #include <type_traits>
 #include <gcem.hpp>
@@ -96,18 +97,26 @@ namespace aft {
 
 TEST(dft1d, l4) {
     using namespace aft;
-    aft_complex<float> x[4] = {{5.f, 0.f},
+    aft_complex<float> x[8] = {{5.f, 0.f},
+                               {5.f, 0.f},
+                               {5.f, 0.f},
+                               {5.f, 0.f},
+                               {5.f, 0.f},
                                {5.f, 0.f},
                                {5.f, 0.f},
                                {5.f, 0.f}};
 
-    aft_complex<float> exp[4] = {{20.f, 0.f},
+    aft_complex<float> exp[8] = {{40.f, 0.f},
+                                 {0.f, 0.f},
+                                 {0.f, 0.f},
+                                 {0.f, 0.f},
+                                 {0.f, 0.f},
                                  {0.f, 0.f},
                                  {0.f, 0.f},
                                  {0.f, 0.f}};
 
     auto planner = AftFFT(x); planner.run();
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 8; i++) {
         EXPECT_EQ(planner.m_out[i].real, exp[i].real);
         EXPECT_EQ(planner.m_out[i].imag, exp[i].imag);
     }
