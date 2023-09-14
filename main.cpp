@@ -60,9 +60,11 @@ namespace aft {
         aft_complex<T> const (&m_in)[M];
         aft_complex<T> m_out[M];
 
+        // dft<0U> will be dead-code-eliminated - but NOLINT marker required.
         template<unsigned int N>
-        __attribute__((always_inline)) inline void dft(unsigned int i, unsigned int stride) {
+        inline void dft(unsigned int i, unsigned int stride) {  // NOLINT(misc-no-recursion)
             T romega, iomega, er, ei, or_, oi, ur, ui;
+            int es, os;
 
             if (N == 1) {
                 m_out[i].real = m_in[i].real;
@@ -74,18 +76,20 @@ namespace aft {
             dft<N/2>(i+stride, stride*2);
 
             for_<N/2>([&] (auto j) {
+                es = i + 2*j.value * stride;
+                os = i + (2*j.value + 1) * stride;
                 romega = force_consteval<T, to_bytes(gcem::cos<T>(-j.value * M_2_PI / N))>;
                 iomega = force_consteval<T, to_bytes(gcem::sin<T>(-j.value * M_2_PI / N))>;
-                er = m_out[i + 2*j.value * stride].real;
-                ei = m_out[i + 2*j.value * stride].imag;
-                or_ = m_out[i + (2*j.value + 1) * stride].real;
-                oi = m_out[i + (2*j.value + 1) * stride].imag;
+                er = m_out[es].real;
+                ei = m_out[es].imag;
+                or_ = m_out[os].real;
+                oi = m_out[os].imag;
                 ur = or_ * romega - oi * iomega;
                 ui = or_ * iomega + oi * romega;
-                m_out[i + 2*j.value * stride].real = er + ur;
-                m_out[i + 2*j.value * stride].imag = ei + ui;
-                m_out[i + (2*j.value + 1) * stride].real = er - ur;
-                m_out[i + (2*j.value + 1) * stride].imag = ei - ui;
+                m_out[es].real = er + ur;
+                m_out[es].imag = ei + ui;
+                m_out[os].real = er - ur;
+                m_out[os].imag = ei - ui;
             });
         }
 
