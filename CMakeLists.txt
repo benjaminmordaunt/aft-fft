@@ -40,6 +40,7 @@ add_executable(Aft main.cpp)
 
 target_include_directories(Aft PUBLIC include ${CMAKE_BINARY_DIR}/_deps/gcem-src/include)
 target_link_libraries(Aft GTest::gtest)
+target_compile_definitions(Aft PUBLIC $<$<CONFIG:DEBUG>:AFT_DEBUG>)
 
 include(GoogleTest)
 gtest_discover_tests(Aft)

@@ -56,73 +56,64 @@ namespace aft {
     template<unsigned int M, typename T>
     struct AftFFT {
         static_assert(IsPowerOf2(M), "Only power-of-2 DFT vector lengths supported.");
-        explicit AftFFT(aft_complex<T> const (&in)[M]) : m_in(in), m_out{0} {}
+        explicit AftFFT(aft_complex<T> const (&in)[M], aft_complex<T> (&out)[M]) : m_in(in), m_out(out) {}
         aft_complex<T> const (&m_in)[M];
-        aft_complex<T> m_out[M];
+        aft_complex<T> (&m_out)[M];
 
         // dft<0U> will be dead-code-eliminated - but NOLINT marker required.
         template<unsigned int N>
-        inline void dft(unsigned int i, unsigned int stride) {  // NOLINT(misc-no-recursion)
-            T romega, iomega, er, ei, or_, oi, ur, ui;
-            int es, os;
+        inline void dft_direct() {  // NOLINT(misc-no-recursion)
+            T romega, iomega, er, ei, ur, ui;
 
-            if (N == 1) {
-                m_out[i].real = m_in[i].real;
-                m_out[i].imag = m_in[i].imag;
-                return;
-            }
+#ifdef AFT_DEBUG
+            // Current parameters for DFT.
+            std::cout << "[" << N << "] Aft-DFT-Direct" << "\n";
+#endif
 
-            dft<N/2>(i, stride*2);
-            dft<N/2>(i+stride, stride*2);
+            for_<N>([&] (auto k) {
+                for_<N>([&](auto j) {
+                    romega = force_consteval<T, to_bytes(gcem::cos<T>(-2 * j.value * k.value * M_PI / N))>;
+                    iomega = force_consteval<T, to_bytes(gcem::sin<T>(-2 * j.value * k.value * M_PI / N))>;
+                    er = m_in[j.value].real;
+                    ei = m_in[j.value].imag;
 
-            for_<N/2>([&] (auto j) {
-                es = i + 2*j.value * stride;
-                os = i + (2*j.value + 1) * stride;
-                romega = force_consteval<T, to_bytes(gcem::cos<T>(-j.value * M_2_PI / N))>;
-                iomega = force_consteval<T, to_bytes(gcem::sin<T>(-j.value * M_2_PI / N))>;
-                er = m_out[es].real;
-                ei = m_out[es].imag;
-                or_ = m_out[os].real;
-                oi = m_out[os].imag;
-                ur = or_ * romega - oi * iomega;
-                ui = or_ * iomega + oi * romega;
-                m_out[es].real = er + ur;
-                m_out[es].imag = ei + ui;
-                m_out[os].real = er - ur;
-                m_out[os].imag = ei - ui;
+#ifdef AFT_DEBUG
+                    // Printing the twiddle factors
+                    std::cout << "[" << N << "] romega: " << romega << " iomega: " << iomega << "\n";
+#endif
+                    ur = er * romega - ei * iomega;
+                    ui = er * iomega + ei * romega;
+
+                    m_out[k.value].real += ur;
+                    m_out[k.value].imag += ui;
+                });
             });
         }
 
         void run() {
-            dft<M>(0, 1);
+            dft_direct<M>();
         }
     };
 }
 
 TEST(dft1d, l4) {
     using namespace aft;
-    aft_complex<float> x[8] = {{5.f, 0.f},
-                               {5.f, 0.f},
-                               {5.f, 0.f},
-                               {5.f, 0.f},
-                               {5.f, 0.f},
-                               {5.f, 0.f},
+    aft_complex<float> x[4] = {{5.f, 1.f},
+                               {5.f, -1.f},
                                {5.f, 0.f},
                                {5.f, 0.f}};
 
-    aft_complex<float> exp[8] = {{40.f, 0.f},
-                                 {0.f, 0.f},
-                                 {0.f, 0.f},
-                                 {0.f, 0.f},
-                                 {0.f, 0.f},
-                                 {0.f, 0.f},
-                                 {0.f, 0.f},
-                                 {0.f, 0.f}};
+    aft_complex<float> out[4] = {0};
 
-    auto planner = AftFFT(x); planner.run();
-    for (int i = 0; i < 8; i++) {
-        EXPECT_EQ(planner.m_out[i].real, exp[i].real);
-        EXPECT_EQ(planner.m_out[i].imag, exp[i].imag);
+    aft_complex<float> expected[4] = {{20.f, 0.f},
+                                 {-1.f, 1.f},
+                                 {0.f, 2.f},
+                                 {1.f, 1.f},};
+
+    auto planner = AftFFT(x, out); planner.run();
+    for (int i = 0; i < 4; i++) {
+        EXPECT_NEAR(out[i].real, expected[i].real, 1e-5f);
+        EXPECT_NEAR(out[i].imag, expected[i].imag, 1e-5f);
     }
 }
 
